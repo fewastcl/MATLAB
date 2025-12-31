@@ -9,6 +9,8 @@ numSweeps = numel(userCounts);
 acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BK BE VI VO
 totalThroughput = zeros(numSweeps, 1);
 acThroughput = zeros(numSweeps, 4); % Mbps per AC
+busySuccess = zeros(numSweeps, 1);
+busyCollision = zeros(numSweeps, 1);
 
 % PHY configuration (set per-AC MCS/NSS/GI; rates are derived inside edca_simulation)
 mcsPerAc = [3 3 7 9];        % UHR-MCS indices (0-based) for BK, BE, VI, VO
@@ -41,6 +43,10 @@ for idx = 1:numSweeps
     % Throughput across all ACs for all users.
     acThroughput(idx, :) = results.throughputMbps';
     totalThroughput(idx) = sum(results.throughputMbps);
+
+    % Medium occupancy split between successful PPDUs and collisions.
+    busySuccess(idx) = results.busySlotsSuccess / cfg.totalSlots;
+    busyCollision(idx) = results.busySlotsCollision / cfg.totalSlots;
 end
 
 figure(3); clf;
@@ -64,4 +70,13 @@ xlabel('Number of stations');
 ylabel('Aggregate throughput (Mbps)');
 title('Throughput vs. User Count (Total and Per AC)');
 legend({'Total','AC_{BK}','AC_{BE}','AC_{VI}','AC_{VO}'}, 'Location', 'northwest', 'Interpreter', 'latex');
+grid on;
+
+figure(5); clf;
+bar(userCounts, [busySuccess busyCollision], 'stacked');
+xlabel('Number of stations');
+ylabel('Medium time fraction');
+title('Medium Occupancy vs. User Count (Success vs. Collision)');
+legend({'Success PPDU','Collisions'}, 'Location', 'northoutside', 'Orientation', 'horizontal');
+ylim([0 1]);
 grid on;

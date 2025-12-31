@@ -89,6 +89,9 @@ stationSuccess = zeros(simConfig.numStations, numAC);
 stationAttempts = zeros(simConfig.numStations, numAC);
 acAttempts = zeros(numAC, 1);
 mediumBusySlots = 0; % remaining busy slots for the current transmission
+busyCause = 0; % 1 = success, 2 = collision
+busySlotsSuccess = 0;
+busySlotsCollision = 0;
 previousSlotBusy = false;
 mediumUsage = zeros(simConfig.totalSlots, 1); % 0 idle, 1 success, 2 collision
 
@@ -104,9 +107,14 @@ for slotIdx = 1:simConfig.totalSlots
 
     % If medium is busy, count down and continue
     if mediumBusySlots > 0
+        if busyCause == 1
+            busySlotsSuccess = busySlotsSuccess + 1;
+        elseif busyCause == 2
+            busySlotsCollision = busySlotsCollision + 1;
+        end
         mediumBusySlots = mediumBusySlots - 1;
         previousSlotBusy = true;
-        mediumUsage(slotIdx) = 1; % busy due to a previous success
+        mediumUsage(slotIdx) = busyCause; % track current busy reason
         continue;
     end
 
@@ -171,6 +179,7 @@ for slotIdx = 1:simConfig.totalSlots
             collidedTx(cIdx) = min(ppduSlots, txopLimitSlots(acIdx));
         end
         mediumBusySlots = max(collisionBusySlots, max(collidedTx));
+        busyCause = 2;
 
         for idx = 1:size(contenders, 1)
             sta = contenders(idx, 1);
@@ -209,6 +218,7 @@ for slotIdx = 1:simConfig.totalSlots
     txSlots = min(ppduSlots, txopLimitSlots(acIdx));
     mediumBusySlots = txSlots;
     mediumUsage(slotIdx) = 1;
+    busyCause = 1;
     previousSlotBusy = true;
 end
 
@@ -231,6 +241,8 @@ results.stationThroughput = stationThroughput;
 results.avgDelaySlots = avgDelay;
 results.collisions = collisions;
 results.mediumUsage = mediumUsage;
+results.busySlotsSuccess = busySlotsSuccess;
+results.busySlotsCollision = busySlotsCollision;
 results.config = simConfig;
 end
 
