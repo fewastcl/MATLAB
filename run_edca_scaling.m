@@ -8,6 +8,7 @@ userCounts = 1:50;
 numSweeps = numel(userCounts);
 acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BE BK VI VO
 totalThroughput = zeros(numSweeps, 1);
+acThroughput = zeros(numSweeps, 4); % Mbps per AC
 
 baseConfig.totalSlots = 1e5;
 baseConfig.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO
@@ -26,7 +27,8 @@ for idx = 1:numSweeps
     % Overall (all stations) access success rate per AC.
     acSuccessRate(idx, :) = results.acSuccessRate;
 
-    % Aggregate throughput across all ACs for all users.
+    % Throughput across all ACs for all users.
+    acThroughput(idx, :) = results.throughputMbps';
     totalThroughput(idx) = sum(results.throughputMbps);
 end
 
@@ -42,8 +44,13 @@ legend({'AC\\_BE','AC\\_BK','AC\\_VI','AC\\_VO'}, 'Location', 'southwest');
 grid on;
 
 figure(4); clf;
-plot(userCounts, totalThroughput, '-o');
+plot(userCounts, totalThroughput, '-o', ...
+     userCounts, acThroughput(:, 1), '-s', ...
+     userCounts, acThroughput(:, 2), '-^', ...
+     userCounts, acThroughput(:, 3), '-d', ...
+     userCounts, acThroughput(:, 4), '-x');
 xlabel('Number of stations');
 ylabel('Aggregate throughput (Mbps)');
-title('Total Throughput vs. User Count');
+title('Throughput vs. User Count (Total and Per AC)');
+legend({'Total','AC\\_BE','AC\\_BK','AC\\_VI','AC\\_VO'}, 'Location', 'northwest');
 grid on;
