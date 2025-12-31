@@ -8,18 +8,18 @@
 cfg.numStations = 8;
 cfg.totalSlots = 2e5; % keep reasonably small for quick runs
 cfg.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO arrival chance per slot
-cfg.slotTime = 32e-6; % HE/EHT TXOP limits are multiples of 32 us
+cfg.slotTime = 9e-6; % HE/EHT TXOP limits mapped to 9 us slot model
 
 % Define standard-like EDCA parameters
 % AIFSN and TXOP limits follow the IEEE 802.11 HE default EDCA parameter set:
 %   AC_BK/AC_BE TXOP = 2528 us, AC_VI = 4096 us, AC_VO = 2080 us.
-% With a 32 us slot time, those map to 79, 79, 128, 65 slots.
+% With a 9 us slot time, those map to approximately 281, 281, 455, 231 slots.
 cfg.acParams = struct( ...
     'name',  {'AC_BE','AC_BK','AC_VI','AC_VO'}, ...
     'aifsn', {3, 7, 2, 2}, ...
     'cwMin', {15, 15, 7, 3}, ...
     'cwMax', {1023, 1023, 15, 7}, ...
-    'txopSlots', {79, 79, 128, 65});
+    'txopSlots', {281, 281, 455, 231});
 
 % Run simulation
 results = edca_simulation(cfg);
