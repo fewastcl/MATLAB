@@ -10,13 +10,19 @@ acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BK BE VI VO
 totalThroughput = zeros(numSweeps, 1);
 acThroughput = zeros(numSweeps, 4); % Mbps per AC
 
+% PHY configuration (set per-AC MCS/NSS/GI; rates are derived inside edca_simulation)
+mcsPerAc = [3 3 7 9];        % UHR-MCS indices (0-based) for BK, BE, VI, VO
+nssPerAc = [1 1 1 1];        % spatial streams per AC
+guardIntervalUs = [0.8 0.8 0.8 0.8]; % GI in microseconds
+
 baseConfig.totalSlots = 1e5;
 baseConfig.arrivalProb = [0.02 0.05 0.01 0.005]; % BK, BE, VI, VO
 baseConfig.slotTime = 9e-6; % HE/EHT TXOP limits mapped to 9 us slot model
-baseConfig.phyRateMbps = [600 600 1200 1200]; % per-AC PHY data rates (example MCS/NSS)
 baseConfig.phyPreambleUs = 100; % HE preamble duration (us)
 baseConfig.macHeaderBits = 272; % MAC overhead per PPDU
-baseConfig.collisionDurationUs = 100; % wasted medium time on collision
+baseConfig.mcsIndex = mcsPerAc;
+baseConfig.nss = nssPerAc;
+baseConfig.guardIntervalUs = guardIntervalUs;
 baseConfig.acParams = struct( ...
     'name',  {'AC_BK','AC_BE','AC_VI','AC_VO'}, ...
     'aifsn', {7, 3, 2, 2}, ...
