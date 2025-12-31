@@ -7,6 +7,7 @@
 userCounts = 1:50;
 numSweeps = numel(userCounts);
 acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BE BK VI VO
+totalThroughput = zeros(numSweeps, 1);
 
 baseConfig.totalSlots = 1e5;
 baseConfig.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO
@@ -22,9 +23,11 @@ for idx = 1:numSweeps
     cfg.numStations = userCounts(idx);
     results = edca_simulation(cfg);
 
-    % Average per-station success rate for each AC (omit NaNs for stations
-    % that never attempted to transmit in an AC).
-    acSuccessRate(idx, :) = mean(results.stationSuccessRate, 1, 'omitnan');
+    % Overall (all stations) access success rate per AC.
+    acSuccessRate(idx, :) = results.acSuccessRate;
+
+    % Aggregate throughput across all ACs for all users.
+    totalThroughput(idx) = sum(results.throughputMbps);
 end
 
 figure(3); clf;
@@ -36,4 +39,11 @@ xlabel('Number of stations');
 ylabel('Access success rate (successes / attempts)');
 title('EDCA Access Success Rate vs. User Count');
 legend({'AC\\_BE','AC\\_BK','AC\\_VI','AC\\_VO'}, 'Location', 'southwest');
+grid on;
+
+figure(4); clf;
+plot(userCounts, totalThroughput, '-o');
+xlabel('Number of stations');
+ylabel('Aggregate throughput (Mbps)');
+title('Total Throughput vs. User Count');
 grid on;

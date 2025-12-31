@@ -30,6 +30,9 @@ disp(array2table(results.throughputMbps', 'VariableNames', {cfg.acParams.name}))
 fprintf('Average delay per AC (slots)\n');
 disp(array2table(results.avgDelaySlots', 'VariableNames', {cfg.acParams.name}));
 
+fprintf('Access success rate across all stations per AC (successes/attempts)\n');
+disp(array2table(results.acSuccessRate', 'VariableNames', {cfg.acParams.name}));
+
 fprintf('Access success rate per station (successes/attempts)\n');
 disp(array2table(results.stationSuccessRate, 'VariableNames', {cfg.acParams.name}));
 
