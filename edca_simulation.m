@@ -53,6 +53,7 @@ successCount = zeros(numAC, 1);
 collisions = 0;
 packetDelays = cell(numAC, 1);
 stationSuccess = zeros(simConfig.numStations, numAC);
+stationAttempts = zeros(simConfig.numStations, numAC);
 mediumBusySlots = 0; % remaining busy slots for the current transmission
 previousSlotBusy = false;
 mediumUsage = zeros(simConfig.totalSlots, 1); % 0 idle, 1 success, 2 collision
@@ -133,6 +134,7 @@ for slotIdx = 1:simConfig.totalSlots
         for idx = 1:size(contenders, 1)
             sta = contenders(idx, 1);
             acIdx = contenders(idx, 2);
+            stationAttempts(sta, acIdx) = stationAttempts(sta, acIdx) + 1;
             cwCurrent(sta, acIdx) = min((cwCurrent(sta, acIdx) + 1) * 2 - 1, simConfig.acParams(acIdx).cwMax);
             backoffCounters(sta, acIdx) = randi(cwCurrent(sta, acIdx) + 1) - 1;
             aifsCountdown(sta, acIdx) = simConfig.acParams(acIdx).aifsn;
@@ -147,6 +149,7 @@ for slotIdx = 1:simConfig.totalSlots
     packetArrival = queue(1);
     packetQueues{sta, acIdx}(1) = [];
 
+    stationAttempts(sta, acIdx) = stationAttempts(sta, acIdx) + 1;
     successCount(acIdx) = successCount(acIdx) + 1;
     stationSuccess(sta, acIdx) = stationSuccess(sta, acIdx) + 1;
     % Record per-AC packet delay. Appending explicitly avoids any parsing
@@ -168,10 +171,13 @@ end
 throughputMbps = (successCount * payloadBits) / (simConfig.totalSlots * slotTime) / 1e6;
 stationThroughput = (stationSuccess * payloadBits) / (simConfig.totalSlots * slotTime) / 1e6;
 avgDelay = cellfun(@(d) mean_or_nan(d), packetDelays);
+stationSuccessRate = success_divide(stationSuccess, stationAttempts);
 
 results = struct();
 results.successCount = successCount;
 results.stationSuccess = stationSuccess;
+results.stationAttempts = stationAttempts;
+results.stationSuccessRate = stationSuccessRate;
 results.throughputMbps = throughputMbps;
 results.stationThroughput = stationThroughput;
 results.avgDelaySlots = avgDelay;
@@ -194,4 +200,9 @@ if isempty(vec)
 else
     out = mean(vec);
 end
+end
+
+function rate = success_divide(successes, attempts)
+rate = successes ./ attempts;
+rate(attempts == 0) = NaN;
 end
