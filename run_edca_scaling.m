@@ -13,12 +13,16 @@ acThroughput = zeros(numSweeps, 4); % Mbps per AC
 baseConfig.totalSlots = 1e5;
 baseConfig.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO
 baseConfig.slotTime = 9e-6; % HE/EHT TXOP limits mapped to 9 us slot model
+baseConfig.phyRateMbps = [600 600 1200 1200]; % per-AC PHY data rates (example MCS/NSS)
+baseConfig.phyPreambleUs = 100; % HE preamble duration (us)
+baseConfig.macHeaderBits = 272; % MAC overhead per PPDU
+baseConfig.collisionDurationUs = 100; % wasted medium time on collision
 baseConfig.acParams = struct( ...
     'name',  {'AC_BE','AC_BK','AC_VI','AC_VO'}, ...
     'aifsn', {3, 7, 2, 2}, ...
     'cwMin', {15, 15, 7, 3}, ...
     'cwMax', {1023, 1023, 15, 7}, ...
-    'txopSlots', {281, 281, 455, 231}); % HE TXOP limits (us) mapped to 9 us slots
+    'txopUs', {2528, 2528, 4096, 2080}); % HE TXOP limits in microseconds
 
 for idx = 1:numSweeps
     cfg = baseConfig;

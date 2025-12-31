@@ -8,18 +8,22 @@
 cfg.numStations = 8;
 cfg.totalSlots = 2e5; % keep reasonably small for quick runs
 cfg.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO arrival chance per slot
-cfg.slotTime = 9e-6; % HE/EHT TXOP limits mapped to 9 us slot model
+cfg.slotTime = 9e-6; % slot duration (s)
+cfg.phyRateMbps = [600 600 1200 1200]; % per-AC PHY data rates (example MCS/NSS)
+cfg.phyPreambleUs = 100; % HE preamble duration (us)
+cfg.macHeaderBits = 272; % MAC overhead per PPDU
+cfg.collisionDurationUs = 100; % wasted medium time on collision
 
 % Define standard-like EDCA parameters
 % AIFSN and TXOP limits follow the IEEE 802.11 HE default EDCA parameter set:
 %   AC_BK/AC_BE TXOP = 2528 us, AC_VI = 4096 us, AC_VO = 2080 us.
-% With a 9 us slot time, those map to approximately 281, 281, 455, 231 slots.
+% TXOP values are expressed directly in microseconds to match the standard.
 cfg.acParams = struct( ...
     'name',  {'AC_BE','AC_BK','AC_VI','AC_VO'}, ...
     'aifsn', {3, 7, 2, 2}, ...
     'cwMin', {15, 15, 7, 3}, ...
     'cwMax', {1023, 1023, 15, 7}, ...
-    'txopSlots', {281, 281, 455, 231});
+    'txopUs', {2528, 2528, 4096, 2080});
 
 % Run simulation
 results = edca_simulation(cfg);

@@ -17,6 +17,10 @@ function results = edca_simulation(simConfig)
 %   Optional fields:
 %     slotTime      - slot duration in seconds (default 9e-6).
 %     payloadBytes  - payload size for each packet (default 1500).
+%     phyRateMbps   - 1x4 vector of PHY data rates per AC (default HE-like).
+%     phyPreambleUs - PHY preamble duration in microseconds (default 100 us).
+%     macHeaderBits - MAC overhead bits per PPDU (default 272 bits ~34 bytes).
+%     collisionDurationUs - medium busy time for a collision (default preamble).
 %
 %   The function returns a RESULTS struct containing throughput in Mbps per
 %   AC and per station, average delay per AC, total successes, collisions,
@@ -29,6 +33,10 @@ end
 % Default parameters
 slotTime = getfield_with_default(simConfig, 'slotTime', 9e-6);
 payloadBytes = getfield_with_default(simConfig, 'payloadBytes', 1500);
+phyRateMbps = getfield_with_default(simConfig, 'phyRateMbps', [1733 1733 2400 2400]); % example HE MCS/NSS rates
+phyPreambleUs = getfield_with_default(simConfig, 'phyPreambleUs', 100);
+macHeaderBits = getfield_with_default(simConfig, 'macHeaderBits', 272);
+collisionDurationUs = getfield_with_default(simConfig, 'collisionDurationUs', phyPreambleUs);
 
 % Validate inputs
 numAC = numel(simConfig.acParams);
@@ -41,6 +49,17 @@ end
 
 % Derived constants
 payloadBits = payloadBytes * 8;
+collisionBusySlots = max(1, ceil((collisionDurationUs * 1e-6) / slotTime));
+txopLimitSlots = ones(1, numAC);
+for acIdx = 1:numAC
+    if isfield(simConfig.acParams(acIdx), 'txopUs')
+        txopLimitSlots(acIdx) = max(1, ceil(simConfig.acParams(acIdx).txopUs * 1e-6 / slotTime));
+    elseif isfield(simConfig.acParams(acIdx), 'txopSlots')
+        txopLimitSlots(acIdx) = max(1, simConfig.acParams(acIdx).txopSlots);
+    else
+        txopLimitSlots(acIdx) = 1;
+    end
+end
 
 % Per-station, per-AC state
 packetQueues = cell(simConfig.numStations, numAC);
@@ -130,7 +149,7 @@ for slotIdx = 1:simConfig.totalSlots
         % Collision
         collisions = collisions + 1;
         mediumUsage(slotIdx) = 2;
-        mediumBusySlots = 1; % collision occupies the channel for one slot
+        mediumBusySlots = collisionBusySlots; % collision occupies the channel
 
         for idx = 1:size(contenders, 1)
             sta = contenders(idx, 1);
@@ -164,7 +183,9 @@ for slotIdx = 1:simConfig.totalSlots
     backoffCounters(sta, acIdx) = -1;
     aifsCountdown(sta, acIdx) = simConfig.acParams(acIdx).aifsn;
 
-    txSlots = max(1, simConfig.acParams(acIdx).txopSlots);
+    % Compute PPDU duration based on PHY rate and overhead, capped by TXOP.
+    ppduSlots = compute_ppdu_slots(payloadBits, macHeaderBits, phyPreambleUs, phyRateMbps(acIdx), slotTime);
+    txSlots = min(ppduSlots, txopLimitSlots(acIdx));
     mediumBusySlots = txSlots;
     mediumUsage(slotIdx) = 1;
     previousSlotBusy = true;
@@ -211,4 +232,11 @@ end
 function rate = success_divide(successes, attempts)
 rate = successes ./ attempts;
 rate(attempts == 0) = NaN;
+end
+
+function slots = compute_ppdu_slots(payloadBits, macHeaderBits, preambleUs, phyRateMbps, slotTime)
+dataBits = payloadBits + macHeaderBits;
+txSeconds = dataBits / (phyRateMbps * 1e6);
+totalSeconds = txSeconds + preambleUs * 1e-6;
+slots = max(1, ceil(totalSeconds / slotTime));
 end
