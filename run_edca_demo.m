@@ -7,7 +7,7 @@
 % Simulation configuration
 cfg.numStations = 8;
 cfg.totalSlots = 2e5; % keep reasonably small for quick runs
-cfg.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO arrival chance per slot
+cfg.arrivalProb = [0.02 0.05 0.01 0.005]; % BK, BE, VI, VO arrival chance per slot
 cfg.slotTime = 9e-6; % slot duration (s)
 cfg.phyRateMbps = [600 600 1200 1200]; % per-AC PHY data rates (example MCS/NSS)
 cfg.phyPreambleUs = 100; % HE preamble duration (us)
@@ -19,8 +19,8 @@ cfg.collisionDurationUs = 100; % wasted medium time on collision
 %   AC_BK/AC_BE TXOP = 2528 us, AC_VI = 4096 us, AC_VO = 2080 us.
 % TXOP values are expressed directly in microseconds to match the standard.
 cfg.acParams = struct( ...
-    'name',  {'AC_BE','AC_BK','AC_VI','AC_VO'}, ...
-    'aifsn', {3, 7, 2, 2}, ...
+    'name',  {'AC_BK','AC_BE','AC_VI','AC_VO'}, ...
+    'aifsn', {7, 3, 2, 2}, ...
     'cwMin', {15, 15, 7, 3}, ...
     'cwMax', {1023, 1023, 15, 7}, ...
     'txopUs', {2528, 2528, 4096, 2080});
@@ -48,7 +48,8 @@ bars = bar(results.stationThroughput, 'stacked');
 title('Station Throughput by Access Category');
 xlabel('Station index');
 ylabel('Throughput (Mbps)');
-legend(bars, {cfg.acParams.name}, 'Location', 'northoutside', 'Orientation', 'horizontal');
+legendLabels = {'AC_{BK}','AC_{BE}','AC_{VI}','AC_{VO}'};
+legend(bars, legendLabels, 'Location', 'northoutside', 'Orientation', 'horizontal', 'Interpreter', 'latex');
 grid on;
 
 % Plot medium usage over time (sampled subset)

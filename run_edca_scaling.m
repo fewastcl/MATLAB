@@ -6,20 +6,20 @@
 
 userCounts = 1:50;
 numSweeps = numel(userCounts);
-acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BE BK VI VO
+acSuccessRate = zeros(numSweeps, 4); % rows: user count, cols: BK BE VI VO
 totalThroughput = zeros(numSweeps, 1);
 acThroughput = zeros(numSweeps, 4); % Mbps per AC
 
 baseConfig.totalSlots = 1e5;
-baseConfig.arrivalProb = [0.05 0.02 0.01 0.005]; % BE, BK, VI, VO
+baseConfig.arrivalProb = [0.02 0.05 0.01 0.005]; % BK, BE, VI, VO
 baseConfig.slotTime = 9e-6; % HE/EHT TXOP limits mapped to 9 us slot model
 baseConfig.phyRateMbps = [600 600 1200 1200]; % per-AC PHY data rates (example MCS/NSS)
 baseConfig.phyPreambleUs = 100; % HE preamble duration (us)
 baseConfig.macHeaderBits = 272; % MAC overhead per PPDU
 baseConfig.collisionDurationUs = 100; % wasted medium time on collision
 baseConfig.acParams = struct( ...
-    'name',  {'AC_BE','AC_BK','AC_VI','AC_VO'}, ...
-    'aifsn', {3, 7, 2, 2}, ...
+    'name',  {'AC_BK','AC_BE','AC_VI','AC_VO'}, ...
+    'aifsn', {7, 3, 2, 2}, ...
     'cwMin', {15, 15, 7, 3}, ...
     'cwMax', {1023, 1023, 15, 7}, ...
     'txopUs', {2528, 2528, 4096, 2080}); % HE TXOP limits in microseconds
@@ -45,7 +45,7 @@ plot(userCounts, acSuccessRate(:, 1), '-o', ...
 xlabel('Number of stations');
 ylabel('Access success rate (successes / attempts)');
 title('EDCA Access Success Rate vs. User Count');
-legend({'AC\\_BE','AC\\_BK','AC\\_VI','AC\\_VO'}, 'Location', 'southwest');
+legend({'AC_{BK}','AC_{BE}','AC_{VI}','AC_{VO}'}, 'Location', 'southwest', 'Interpreter', 'latex');
 grid on;
 
 figure(4); clf;
@@ -57,5 +57,5 @@ plot(userCounts, totalThroughput, '-o', ...
 xlabel('Number of stations');
 ylabel('Aggregate throughput (Mbps)');
 title('Throughput vs. User Count (Total and Per AC)');
-legend({'Total','AC\\_BE','AC\\_BK','AC\\_VI','AC\\_VO'}, 'Location', 'northwest');
+legend({'Total','AC_{BK}','AC_{BE}','AC_{VI}','AC_{VO}'}, 'Location', 'northwest', 'Interpreter', 'latex');
 grid on;
