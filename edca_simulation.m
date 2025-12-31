@@ -17,10 +17,13 @@ function results = edca_simulation(simConfig)
 %   Optional fields:
 %     slotTime      - slot duration in seconds (default 9e-6).
 %     payloadBytes  - payload size for each packet (default 1500).
-%     phyRateMbps   - 1x4 vector of PHY data rates per AC (default HE-like).
+%     mcsIndex      - scalar or 1x4 vector of UHR-MCS indices (0-based) per AC.
+%     nss           - scalar or 1x4 vector of spatial streams per AC (default 1).
+%     guardIntervalUs - scalar or 1x4 vector GI in microseconds (0.8/1.6/3.2).
+%     phyRateMbps   - 1x4 vector override of PHY data rates per AC.
 %     phyPreambleUs - PHY preamble duration in microseconds (default 100 us).
 %     macHeaderBits - MAC overhead bits per PPDU (default 272 bits ~34 bytes).
-%     collisionDurationUs - medium busy time for a collision (default preamble).
+%     collisionDurationUs - minimum medium busy time for a collision (default preamble).
 %
 %   The function returns a RESULTS struct containing throughput in Mbps per
 %   AC and per station, average delay per AC, total successes, collisions,
@@ -33,10 +36,21 @@ end
 % Default parameters
 slotTime = getfield_with_default(simConfig, 'slotTime', 9e-6);
 payloadBytes = getfield_with_default(simConfig, 'payloadBytes', 1500);
-phyRateMbps = getfield_with_default(simConfig, 'phyRateMbps', [1733 1733 2400 2400]); % example HE MCS/NSS rates
 phyPreambleUs = getfield_with_default(simConfig, 'phyPreambleUs', 100);
 macHeaderBits = getfield_with_default(simConfig, 'macHeaderBits', 272);
 collisionDurationUs = getfield_with_default(simConfig, 'collisionDurationUs', phyPreambleUs);
+mcsIndex = expand_to_ac(getfield_with_default(simConfig, 'mcsIndex', [3 3 7 9]), numAC);
+nss = expand_to_ac(getfield_with_default(simConfig, 'nss', 1), numAC);
+guardIntervalUs = expand_to_ac(getfield_with_default(simConfig, 'guardIntervalUs', 0.8), numAC);
+
+if isfield(simConfig, 'phyRateMbps')
+    phyRateMbps = simConfig.phyRateMbps;
+else
+    phyRateMbps = zeros(1, numAC);
+    for acIdx = 1:numAC
+        phyRateMbps(acIdx) = uhr_phy_rate(mcsIndex(acIdx), nss(acIdx), guardIntervalUs(acIdx));
+    end
+end
 
 % Validate inputs
 numAC = numel(simConfig.acParams);
@@ -149,7 +163,14 @@ for slotIdx = 1:simConfig.totalSlots
         % Collision
         collisions = collisions + 1;
         mediumUsage(slotIdx) = 2;
-        mediumBusySlots = collisionBusySlots; % collision occupies the channel
+        % Collision duration: attempted PPDU (capped by TXOP), at least preamble.
+        collidedTx = zeros(size(contenders, 1), 1);
+        for cIdx = 1:size(contenders, 1)
+            acIdx = contenders(cIdx, 2);
+            ppduSlots = compute_ppdu_slots(payloadBits, macHeaderBits, phyPreambleUs, phyRateMbps(acIdx), slotTime);
+            collidedTx(cIdx) = min(ppduSlots, txopLimitSlots(acIdx));
+        end
+        mediumBusySlots = max(collisionBusySlots, max(collidedTx));
 
         for idx = 1:size(contenders, 1)
             sta = contenders(idx, 1);
@@ -232,6 +253,25 @@ end
 function rate = success_divide(successes, attempts)
 rate = successes ./ attempts;
 rate(attempts == 0) = NaN;
+end
+
+function rateMbps = uhr_phy_rate(mcsIndex, nss, guardIntervalUs)
+%UHR_PHY_RATE Return data rate in Mbps for given MCS, NSS, GI (us) using 242-tone RU table.
+ndbpsTable = [117 351 468 702 936 1053 1170 1404 1755 1950 2340 59 234 468 702 936 1404];
+if mcsIndex < 0 || mcsIndex >= numel(ndbpsTable)
+    error('mcsIndex must be between 0 and %d.', numel(ndbpsTable)-1);
+end
+ndbps = ndbpsTable(mcsIndex + 1) * max(1, nss);
+tsym = 12.8e-6 + guardIntervalUs * 1e-6;
+rateMbps = (ndbps / tsym) / 1e6;
+end
+
+function vec = expand_to_ac(val, numAC)
+if isscalar(val)
+    vec = repmat(val, 1, numAC);
+else
+    vec = val;
+end
 end
 
 function slots = compute_ppdu_slots(payloadBits, macHeaderBits, preambleUs, phyRateMbps, slotTime)
